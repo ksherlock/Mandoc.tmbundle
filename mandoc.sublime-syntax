@@ -1,7 +1,7 @@
 %YAML 1.2
 ---
 name: Mandoc
-file_extensions: [1,2,3,4,5,6,7,8,9]
+file_extensions: []
 scope: text.mandoc
 
 contexts:
@@ -13,7 +13,7 @@ contexts:
     - match: '^(\.Sh)\s+(.*)$'
       captures:
         1: markup.heading
-        2: entity.name.section
+        2: markup.heading entity.name.section
 
     - include: block-full-explicit
     - include: block-partial-explicit
@@ -21,59 +21,132 @@ contexts:
     - include: block-partial-implicit
     - include: special-block-macro
     - include: inline
+    - include: characters
+
+    - match: ^\.
+      scope: invalid.illegal
 
   block-full-explicit:
+    - match: '^\.Bd\b'
+      scope: entity.name.tag # markup.block-full-explicit
+      push:
+        - match: $
+          pop: true
+        - match: (-offset)\s+(indent|indent-two|left|right|center)\b
+          captures:
+            1: constant.language
+            2: constant.language
+        - match: -(centered|filled|literal|ragged|unfilled|offset|compact)\b
+          scope: constant.language
+
+    - match: '^\.Bf\b'
+      scope: entity.name.tag # markup.block-full-explicit
+      push:
+        - match: $
+          pop: true
+        - match: -(emphasis|literal|symbolic)\b
+          scope: constant.language
+        - match: \b(Em|Li|Sy)\b
+          scope: constant.language
+
     - match: '^\.(Bd|Bf|Bk|Bl|Ed|Ef|Ek|El)\b'
-      scope: markup.block-full-explicit
+      scope: entity.name.tag # markup.block-full-explicit
 
   block-partial-explicit:
     - match: '^\.(Fo|Re|Rs)\b'
-      scope: markup.block-partial-explicit
+      scope: entity.name.tag #markup.block-partial-explicit
 
     - match: '^\.(Ac|Ao|Bc|Bo|Brc|Bro|Dc|Do|Ec|Eo|Fc|Oc|Oo|Pc|Po|Qc|Qo|Sc|So|Xc|Xo)\b'
-      scope: markup.block-partial-explicit
+      scope: entity.name.tag #markup.block-partial-explicit
       push: callable
 
 
   block-full-implicit:
     - match: '^\.(Nd)\b'
-      scope: markup.block-full-implicit
-    - match: '^\.It\b'
-      push:
-        - meta_scope: markup.list
-        - include: callable
+      scope: entity.name.tag #markup.block-full-implicit
+    # - match: '^\.It\b'
+    #   push:
+    #     - meta_scope: markup.list
+    #     - include: callable
 
     - match: '^\.(It|Nm|Sh|Ss)\b'
-      scope: markup.block-full-implicit
+      scope: entity.name.tag #markup.block-full-implicit
       push: callable
 
   block-partial-implicit:
     - match: '^\.(Aq|Bq|Brq|D1|Dl|Dq|En|Op|Pq|Ql|Qq|Sq|Vt)\b'
-      scope: markup.block-partial-implicit
+      scope: entity.name.tag #markup.block-partial-implicit
       push: callable
 
 
   special-block-macro:
     - match: '^\.(Ta)\b'
-      scope: markup.special-block-macro
+      scope: entity.name.tag #markup.special-block-macro
       push: callable
 
 
   inline:
     - match: '^\.%(A|B|C|D|I|J|N|O|P|Q|R|T|U|V)\b'
-      scope: markup.inline
+      scope: entity.name.tag #markup.inline
 
     - match: '^\.(Bt|Db|Dd|Dt|Ex|Fd|Hf|In|Lb|Lp|Os|Pp|Rv|Sm|Ud)\b'
-      scope: markup.inline
+      scope: entity.name.tag #markup.inline
+
+    - match: '^\.An\b'
+      scope: entity.name.tag #markup.inline
+      push:
+        - match: -(no)?split
+          scope:  constant.language
+        - include: callable
+
 
     - match: '^\.(Ad|An|Ap|Ar|At|Bsx|Bx|Cd|Cm|Dv|Dx|Em|Er|Es|Ev|Fa|Fl|Fn|Fr|Ft|Fx|Ic|Li|Lk|Ms|Mt|Nm|No|Ns|Nx|Ot|Ox|Pa|Pf|St|Sx|Sy|Tn|Ux|Va|Vt|Xr)\b'
-      scope: markup.inline
+      scope: entity.name.tag #markup.inline
       push: callable
 
 
   callable:
     - match: \b(Ac|Ao|Bc|Bo|Brc|Bro|Dc|Do|Ec|Eo|Fc|Oc|Oo|Pc|Po|Qc|Qo|Sc|So|Xc|Xo|Aq|Bq|Brq|Dq|En|Op|Pq|Ql|Qq|Sq|Vt|Ta|Ad|An|Ap|Ar|At|Bsx|Bx|Cd|Cm|Dv|Dx|Em|Er|Es|Ev|Fa|Fl|Fn|Fr|Ft|Fx|Ic|Li|Lk|Ms|Mt|Nm|No|Ns|Nx|Ot|Ox|Pa|Pf|Sx|Sy|Tn|Ux|Va|Vt|Xr)\b
-      scope: markup.callable
+      scope: entity.other.attribute-name # entity.other.callable
+
+    - match: '"'
+      push:
+        - meta_scope: string
+        - match: '"'
+          pop: true
+        - match: \n
+          scope: invalid.illegal
+          pop: true
+        - match: $
+          pop: true
 
     - match: $
       pop: true
+
+
+  characters:
+    - match: '\\\(..'
+      scope: constant.character
+
+    - match: '\\\[u([A-F0-9]{4,})\]'
+      scope: constant.character.unicode
+
+    - match: '\\C''u([A-F0-9]{4,})'''
+      scope: constant.character.unicode
+
+
+    - match: '\\\[([^\]]+)\]'
+      scope: constant.character
+
+
+
+    - match: '\\\*\(..'
+      scope: invalid.deprecated
+    - match: '\\\*.'
+      scope: invalid.deprecated
+
+    - match: '\\N''([0-9]+)'''
+      scope: invalid.deprecated
+
+    - match: '\\.'
+      scope: constant.character
